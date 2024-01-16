@@ -9,6 +9,11 @@ import 'package:share/share.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PelangganController extends GetxController {
+  final TextEditingController editNamaController = TextEditingController();
+  final TextEditingController editAlamatController = TextEditingController();
+  final TextEditingController editNomorTeleponController =
+      TextEditingController();
+  final TextEditingController editEmailController = TextEditingController();
   RxList<Pelanggan> pelangganList = <Pelanggan>[].obs;
   static const String pelangganKey = 'pelangganKey';
   Future<void> savePelangganToPrefs() async {
@@ -17,9 +22,9 @@ class PelangganController extends GetxController {
       final pelangganJsonList =
           pelangganList.map((pelanggan) => pelanggan.toJson()).toList();
       await prefs.setString(pelangganKey, json.encode(pelangganJsonList));
-      print('Data pelanggan berhasil disimpan di SharedPreferences.');
+      debugPrint('Data pelanggan berhasil disimpan di SharedPreferences.');
     } catch (e) {
-      print('Error saat menyimpan data pelanggan: $e');
+      debugPrint('Error saat menyimpan data pelanggan: $e');
     }
   }
 
@@ -32,30 +37,19 @@ class PelangganController extends GetxController {
             json.decode(pelangganJsonString);
         pelangganList.assignAll(
             pelangganJsonList.map((json) => Pelanggan.fromJson(json)).toList());
-        print('Data pelanggan berhasil dimuat dari SharedPreferences.');
+        debugPrint('Data pelanggan berhasil dimuat dari SharedPreferences.');
       }
     } catch (e) {
-      print('Error saat memuat data pelanggan: $e');
+      debugPrint('Error saat memuat data pelanggan: $e');
     }
   }
 
   @override
   void onInit() {
     super.onInit();
-    // Memuat data pelanggan ketika controller diinisialisasi
     loadPelangganFromPrefs();
   }
 
-  Future<void> initSharedPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    Get.put<SharedPreferences>(prefs, permanent: true);
-
-    final pelangganController =
-        Get.put<PelangganController>(PelangganController());
-    await pelangganController.loadPelangganFromPrefs();
-  }
-
-  // Metode untuk menampilkan detail pelanggan
   void showPelangganDetail(BuildContext context, Pelanggan pelanggan) {
     Get.defaultDialog(
       title: 'Detail Pelanggan',
@@ -72,20 +66,20 @@ class PelangganController extends GetxController {
         ElevatedButton(
           onPressed: () {
             // Tampilkan form edit pelanggan
-            showEditForm(pelanggan);
+            // showEditForm(pelanggan);
+            // pelangganController.showEditForm(pelanggan);
+            showEditForm(context, pelanggan);
           },
           child: const Text('Edit'),
         ),
         ElevatedButton(
           onPressed: () {
-            // Fungsi cetak data pelanggan
             printPelangganData(pelanggan);
           },
           child: const Text('Cetak'),
         ),
         ElevatedButton(
           onPressed: () {
-            // Fungsi berbagi data pelanggan
             sharePelangganData(pelanggan);
           },
           child: const Text('Bagikan'),
@@ -95,27 +89,67 @@ class PelangganController extends GetxController {
   }
 
   void printPelangganData(Pelanggan pelanggan) {
-    print('Data pelanggan dicetak: ${pelanggan.toJson()}');
+    debugPrint('Data pelanggan dicetak: ${pelanggan.toJson()}');
   }
 
   void sharePelangganData(Pelanggan pelanggan) {
-    print('Data pelanggan dibagikan: ${pelanggan.toJson()}');
+    debugPrint('Data pelanggan dibagikan: ${pelanggan.toJson()}');
     final message =
         'Nama: ${pelanggan.namaPelanggan}\nAlamat: ${pelanggan.alamat}\nNomor Telepon: ${pelanggan.nomorTelepon}\nEmail: ${pelanggan.email}';
 
     Share.share(message);
   }
 
-  void showEditForm(Pelanggan pelanggan) {
+  void showEditForm(BuildContext context, Pelanggan pelanggan) {
     debugPrint('Data pelanggan diedit: ${pelanggan.toJson()}');
+    editNamaController.text = pelanggan.namaPelanggan;
+    editAlamatController.text = pelanggan.alamat;
+    editNomorTeleponController.text = pelanggan.nomorTelepon;
+    editEmailController.text = pelanggan.email;
+    Get.defaultDialog(
+      title: 'Edit Pelanggan',
+      content: Column(
+        children: [
+          TextField(
+            controller: editNamaController,
+            decoration: const InputDecoration(labelText: 'Nama Pelanggan'),
+          ),
+          TextField(
+            controller: editAlamatController,
+            decoration: const InputDecoration(labelText: 'Alamat'),
+          ),
+          TextField(
+            controller: editNomorTeleponController,
+            decoration: const InputDecoration(labelText: 'Nomor Telepon'),
+          ),
+          TextField(
+            controller: editEmailController,
+            decoration: const InputDecoration(labelText: 'Email'),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              editPelanggan(
+                pelanggan,
+                editNamaController.text,
+                editAlamatController.text,
+                editNomorTeleponController.text,
+                editEmailController.text,
+              );
+              Get.back();
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
   }
 
   void addPelanggan(
       String nama, String alamat, String nomorTelepon, String email) {
     pelangganList.add(
       Pelanggan(
-        idPelanggan: pelangganList.length +
-            1, // Contoh: ID bisa dihasilkan sesuai kebutuhan aplikasi Anda
+        idPelanggan: pelangganList.length + 1,
         namaPelanggan: nama,
         alamat: alamat,
         nomorTelepon: nomorTelepon,
@@ -125,44 +159,55 @@ class PelangganController extends GetxController {
     savePelangganToPrefs();
   }
 
-  // Metode untuk mengedit data pelanggan
   void editPelanggan(Pelanggan pelanggan, String nama, String alamat,
       String nomorTelepon, String email) {
-    int index =
-        pelangganList.indexWhere((p) => p.idPelanggan == pelanggan.idPelanggan);
-    if (index != -1) {
-      final oldPelanggan = fromPelanggan(pelanggan);
-      pelangganList[index] = Pelanggan(
-        idPelanggan: pelanggan.idPelanggan,
-        namaPelanggan: nama,
-        alamat: alamat,
-        nomorTelepon: nomorTelepon,
-        email: email,
+    try {
+      // Cek apakah pelanggan ada dalam daftar
+      int index = pelangganList.indexWhere(
+        (p) => p.idPelanggan == pelanggan.idPelanggan,
       );
-      // Hapus dari SharedPreferences setelah mengedit
-      savePelangganToPrefs();
-      // Cetak pesan berhasil mengedit
-      print('Data pelanggan berhasil diubah: $oldPelanggan menjadi $pelanggan');
-    } else {
-      print('Error: Pelanggan tidak ditemukan.');
+
+      if (index != -1) {
+        // Simpan pelanggan sebelum diubah
+        final oldPelanggan = fromPelanggan(pelanggan);
+
+        // Edit data pelanggan
+        pelangganList[index] = Pelanggan(
+          idPelanggan: pelanggan.idPelanggan,
+          namaPelanggan: nama,
+          alamat: alamat,
+          nomorTelepon: nomorTelepon,
+          email: email,
+        );
+
+        // Simpan ke SharedPreferences setelah mengedit
+        savePelangganToPrefs();
+
+        // Cetak pesan berhasil mengedit
+        debugPrint(
+            'Data pelanggan berhasil diubah: $oldPelanggan menjadi $pelanggan');
+      } else {
+        // Tampilkan pesan jika pelanggan tidak ditemukan
+        debugPrint('Error: Pelanggan tidak ditemukan.');
+      }
+    } catch (e) {
+      // Tangkap dan tampilkan error jika ada
+      debugPrint('Error saat mengedit data pelanggan: $e');
     }
   }
 
-  // Metode untuk menghapus pelanggan
   void removePelanggan(Pelanggan pelanggan) {
     pelangganList.remove(pelanggan);
-    // Hapus dari SharedPreferences setelah menghapus
+
     savePelangganToPrefs();
-    // Cetak pesan berhasil menghapus
-    print('Data pelanggan berhasil dihapus: $pelanggan');
+
+    debugPrint('Data pelanggan berhasil dihapus: $pelanggan');
   }
 
-  // Metode untuk menandai atau tidak menandai pelanggan
   void toggleSelected(Pelanggan pelanggan) {
     pelanggan.isSelected = !pelanggan.isSelected;
   }
 
-  // Metode untuk mengecek apakah pelanggan ditandai atau tidak
   bool isSelected(Pelanggan pelanggan) {
     return pelanggan.isSelected;
   }
@@ -178,7 +223,6 @@ class PelangganController extends GetxController {
     );
   }
 
-  // Fungsi untuk menyimpan data pelanggan ke SharedPreferences saat ada perubahan
   @override
   void onClose() {
     super.onClose();
